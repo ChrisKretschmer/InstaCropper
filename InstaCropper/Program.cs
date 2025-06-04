@@ -22,7 +22,6 @@ foreach (var imagePath in args)
             int targetWidth = 1080;
             int targetHeight = 1350;
 
-            // create a empty image called resized image of target size x target size - fill it white
             var resizedImage = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(targetWidth, targetHeight);
             resizedImage.Mutate(x => x
                 .BackgroundColor(SixLabors.ImageSharp.Color.White) // Fill the image with white color
