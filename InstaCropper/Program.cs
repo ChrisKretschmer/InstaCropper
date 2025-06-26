@@ -15,7 +15,7 @@ ConsoleKey key;
 do
 {
     Console.Clear();
-    Console.WriteLine("Wähle das gewünschte Seitenverhältnis (mit Pfeiltasten, Enter bestätigt):\n");
+    Console.WriteLine("Select the desired aspect ratio using the arrow keys. Enter confirms the selection):\n");
     for (int i = 0; i < aspectRatios.Length; i++)
     {
         if (i == selected)
