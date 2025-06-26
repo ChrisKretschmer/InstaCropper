@@ -1,7 +1,30 @@
 ﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
-// Seitenverhältnisse definieren
+static int SelectMenu(string title, string[] options)
+{
+    int selected = 0;
+    ConsoleKey key;
+    do
+    {
+        Console.Clear();
+        Console.WriteLine(title + "\n");
+        for (int i = 0; i < options.Length; i++)
+        {
+            Console.Write(i == selected ? "> " : "  ");
+            Console.WriteLine(options[i]);
+        }
+
+        key = Console.ReadKey(true).Key;
+        if (key == ConsoleKey.UpArrow)
+            selected = (selected == 0) ? options.Length - 1 : selected - 1;
+        else if (key == ConsoleKey.DownArrow)
+            selected = (selected == options.Length - 1) ? 0 : selected + 1;
+    } while (key != ConsoleKey.Enter);
+
+    return selected;
+}
+
 (string Name, int Width, int Height)[] aspectRatios = new[]
 {
     ("1:1 (1080x1080)", 1080, 1080),
@@ -9,31 +32,19 @@ using SixLabors.ImageSharp.Processing;
     ("16:9 (1080x608)", 1080, 608)
 };
 
-// Auswahlmenü anzeigen
-int selected = 0;
-ConsoleKey key;
-do
-{
-    Console.Clear();
-    Console.WriteLine("Select the desired aspect ratio using the arrow keys. Enter confirms the selection):\n");
-    for (int i = 0; i < aspectRatios.Length; i++)
-    {
-        if (i == selected)
-            Console.Write("> ");
-        else
-            Console.Write("  ");
-        Console.WriteLine(aspectRatios[i].Name);
-    }
+int aspectIndex = SelectMenu(
+    "Select the desired aspect ratio using the arrow keys. Enter confirms the selection:",
+    aspectRatios.Select(a => a.Name).ToArray()
+);
+int targetWidth = aspectRatios[aspectIndex].Width;
+int targetHeight = aspectRatios[aspectIndex].Height;
 
-    key = Console.ReadKey(true).Key;
-    if (key == ConsoleKey.UpArrow)
-        selected = (selected == 0) ? aspectRatios.Length - 1 : selected - 1;
-    else if (key == ConsoleKey.DownArrow)
-        selected = (selected == aspectRatios.Length - 1) ? 0 : selected + 1;
-} while (key != ConsoleKey.Enter);
-
-int targetWidth = aspectRatios[selected].Width;
-int targetHeight = aspectRatios[selected].Height;
+string[] colorOptions = { "White", "Black" };
+int colorIndex = SelectMenu(
+    "Select the background color (use arrow keys, Enter confirms):",
+    colorOptions
+);
+var backgroundColor = colorIndex == 0 ? SixLabors.ImageSharp.Color.White : SixLabors.ImageSharp.Color.Black;
 
 if (args.Length == 0)
 {
@@ -55,7 +66,7 @@ foreach (var imagePath in args)
         {
             var resizedImage = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(targetWidth, targetHeight);
             resizedImage.Mutate(x => x
-                .BackgroundColor(SixLabors.ImageSharp.Color.White)
+                .BackgroundColor(backgroundColor)
             );
 
             var resizedOriginalImage = image.Clone(ctx => ctx
