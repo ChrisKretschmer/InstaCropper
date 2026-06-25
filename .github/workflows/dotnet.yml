@@ -1,19 +1,28 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
+# Builds and tests InstaCropper; packages macOS, Windows and Linux for real builds.
+#
+#   * Every push/PR  -> restore, build, test.
+#   * Push to master -> build the macOS .app (on macOS) and the Windows/Linux
+#                       binaries (on Linux) and upload them as workflow
+#                       *artifacts* named with a "-dev.<sha>" version. No tag,
+#                       no GitHub release is created.
+#   * Push of a v* tag (created manually for real releases) -> build all
+#                       platforms and publish a GitHub release for that version.
+# See https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 name: .NET
 
 on:
   push:
     branches: [ "master" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "master" ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET
@@ -23,6 +32,112 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --no-build --configuration Release --verbosity normal
+
+  # Compute the version once and share it with the packaging/release jobs.
+  version:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      is_release: ${{ steps.v.outputs.is_release }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0   # full history + tags are needed to compute the dev version
+    - id: v
+      run: |
+        if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          # Tag build (manual, real release): use the exact tagged version.
+          VERSION="${GITHUB_REF#refs/tags/}"
+          IS_RELEASE=true
+        else
+          # Master build: bump the patch of the last real release tag for naming only.
+          # No tag is created for these dev builds.
+          LAST_TAG="$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)"
+          LAST_TAG="${LAST_TAG:-v0.0.0}"
+          BASE="${LAST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+          PATCH=$((PATCH + 1))
+          VERSION="v${MAJOR}.${MINOR}.${PATCH}-dev.$(git rev-parse --short HEAD)"
+          IS_RELEASE=false
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
+        echo "Resolved version: $VERSION (is_release=$IS_RELEASE)"
+
+  # macOS .app must be built on macOS (osacompile / PlistBuddy / ditto).
+  package-macos:
+    needs: version
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Build macOS app
+      run: |
+        VERSION="${{ needs.version.outputs.version }}"
+        bash macos/build-macos-app.sh "${VERSION#v}" artifacts
+        ditto -c -k --keepParent "artifacts/InstaCropper.app" "artifacts/InstaCropper-macos-${VERSION}.zip"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: InstaCropper-macos-${{ needs.version.outputs.version }}
+        path: artifacts/InstaCropper-macos-*.zip
+        if-no-files-found: error
+
+  # Windows and Linux are self-contained single-file binaries, cross-published on Linux.
+  package-desktop:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Build Windows and Linux binaries
+      run: |
+        VERSION="${{ needs.version.outputs.version }}"
+        NUMERIC="${VERSION#v}"; NUMERIC="${NUMERIC%%-*}"
+        for RID in win-x64 linux-x64; do
+          dotnet publish InstaCropper/InstaCropper.csproj \
+            -c Release -r "$RID" --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:Version="$NUMERIC" \
+            -p:InformationalVersion="${VERSION#v}" \
+            -o "artifacts/$RID"
+          rm -f "artifacts/$RID"/*.pdb
+          (cd "artifacts/$RID" && zip -r "../InstaCropper-$RID-${VERSION}.zip" .)
+        done
+    - uses: actions/upload-artifact@v4
+      with:
+        name: InstaCropper-windows-linux-${{ needs.version.outputs.version }}
+        path: artifacts/InstaCropper-*-x64-*.zip
+        if-no-files-found: error
+
+  # Tag build only: gather every platform zip and publish a GitHub release.
+  release:
+    if: needs.version.outputs.is_release == 'true'
+    needs: [ version, package-macos, package-desktop ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create the release
+    steps:
+    - name: Download all build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+    - name: Create release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        VERSION="${{ needs.version.outputs.version }}"
+        gh release create "$VERSION" $(find dist -name '*.zip') \
+          --repo "$GITHUB_REPOSITORY" \
+          --title "InstaCropper $VERSION" \
+          --generate-notes

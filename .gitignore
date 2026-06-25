@@ -1,3 +1,8 @@
 /.vs
-/InstaCropper/obj
-/InstaCropper/bin
+
+# Build output (any project)
+[Bb]in/
+[Oo]bj/
+
+# Release artifacts (macOS .app, zips)
+/artifacts/

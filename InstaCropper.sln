@@ -5,6 +5,8 @@ VisualStudioVersion = 17.12.35506.116 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InstaCropper", "InstaCropper\InstaCropper.csproj", "{1DC66B1B-0B14-4BED-806F-C214345E7C07}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InstaCropper.Tests", "InstaCropper.Tests\InstaCropper.Tests.csproj", "{9B1D4984-C72A-49EC-A30C-10391144C6B2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{1DC66B1B-0B14-4BED-806F-C214345E7C07}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1DC66B1B-0B14-4BED-806F-C214345E7C07}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1DC66B1B-0B14-4BED-806F-C214345E7C07}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B1D4984-C72A-49EC-A30C-10391144C6B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B1D4984-C72A-49EC-A30C-10391144C6B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B1D4984-C72A-49EC-A30C-10391144C6B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B1D4984-C72A-49EC-A30C-10391144C6B2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

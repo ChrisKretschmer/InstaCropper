@@ -1,14 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>InstaCropper</RootNamespace>
+    <AssemblyName>InstaCropper</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- 3.1.x is the last Apache-2.0 licensed line; 4.x requires a paid Six Labors license. -->
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Allow the test project to reach internal members of this exe. -->
+    <InternalsVisibleTo Include="InstaCropper.Tests" />
   </ItemGroup>
 
 </Project>
