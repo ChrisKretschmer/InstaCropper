@@ -129,16 +129,18 @@ directory.
 
 - Triggers: push to `master`, push of a `v*` tag, and PRs targeting `master`.
 - **`build` job** (ubuntu): `restore` → `build -c Release` → `test`. Runs on
-  every push/PR and gates releases.
-- **`release` job** (macos-latest, only on master pushes or `v*` tags):
-  computes a version, builds the macOS `.app`, zips it, and creates a GitHub
-  release with `gh`.
-  - **Master push:** prerelease `v<MAJOR>.<MINOR>.<PATCH+1>-dev.<sha>`, where the
-    base is the latest **real** release tag (dev tags are excluded by a regex).
-    `gh release create` creates the dev tag at the commit.
-  - **Tag push:** full release for the exact tagged version.
-- Needs `permissions: contents: write`. Keep the build warning-free (the ImageSharp
-  `NU1902` advisory aside) and tests green before pushing.
+  every push/PR and gates packaging.
+- **`package` job** (macos-latest, only on master pushes or `v*` tags):
+  computes a version, builds the macOS `.app`, and zips it.
+  - **Master push:** the zip is uploaded as a **workflow artifact** named
+    `v<MAJOR>.<MINOR>.<PATCH+1>-dev.<sha>` (base = latest **real** release tag,
+    `-dev` tags excluded by a regex). **No git tag or release is created** for
+    dev builds — the version string is for artifact naming only.
+  - **Tag push:** a full GitHub release is published for the exact tagged
+    version. **Tags are created manually, only for real releases.**
+- Needs `permissions: contents: write` (for the release on tag pushes). Keep the
+  build warning-free (the ImageSharp `NU1902` advisory aside) and tests green
+  before pushing.
 
 ## Conventions & guidance for changes
 

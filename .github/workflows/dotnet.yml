@@ -1,10 +1,11 @@
-# Builds and tests InstaCropper, and publishes releases for real builds.
+# Builds and tests InstaCropper; packages the macOS app for real builds.
 #
 #   * Every push/PR  -> restore, build, test.
-#   * Push to master -> additionally cut a *prerelease*: the last real tagged
-#                       version with its patch bumped by 1 and a "-dev.<sha>"
-#                       suffix (e.g. v1.2.4-dev.abc1234).
-#   * Push of a tag  -> cut a full *release* for that tagged version.
+#   * Push to master -> build the macOS .app and upload it as a workflow
+#                       *artifact* named with a "-dev.<sha>" version. No tag,
+#                       no GitHub release is created.
+#   * Push of a v* tag (created manually for real releases) -> build the macOS
+#                       .app and publish a GitHub release for that version.
 # See https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 name: .NET
 
@@ -16,7 +17,7 @@ on:
     branches: [ "master" ]
 
 permissions:
-  contents: write   # required to create tags and releases
+  contents: write   # required to create releases on tag pushes
 
 jobs:
   build:
@@ -34,15 +35,15 @@ jobs:
     - name: Test
       run: dotnet test --no-build --configuration Release --verbosity normal
 
-  release:
-    # Only real builds produce releases: pushes to master, or pushes of a v* tag.
+  package:
+    # Real builds package the macOS app: pushes to master (-> artifact) or a v* tag (-> release).
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     needs: build
     runs-on: macos-latest   # macOS is required to build the .app droplet
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0   # full history + tags are needed to compute the version
+        fetch-depth: 0   # full history + tags are needed to compute the dev version
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -52,22 +53,23 @@ jobs:
       id: version
       run: |
         if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-          # Tag build: release the exact tagged version.
+          # Tag build (manual, real release): use the exact tagged version.
           VERSION="${GITHUB_REF#refs/tags/}"
-          PRERELEASE=false
+          IS_RELEASE=true
         else
-          # Master build: bump the patch of the last *real* (non -dev) release tag.
+          # Master build: bump the patch of the last real release tag for naming only.
+          # No tag is created for these dev builds.
           LAST_TAG="$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)"
           LAST_TAG="${LAST_TAG:-v0.0.0}"
           BASE="${LAST_TAG#v}"
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
           PATCH=$((PATCH + 1))
           VERSION="v${MAJOR}.${MINOR}.${PATCH}-dev.$(git rev-parse --short HEAD)"
-          PRERELEASE=true
+          IS_RELEASE=false
         fi
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
-        echo "Resolved version: $VERSION (prerelease=$PRERELEASE)"
+        echo "is_release=$IS_RELEASE" >> "$GITHUB_OUTPUT"
+        echo "Resolved version: $VERSION (is_release=$IS_RELEASE)"
 
     - name: Build macOS app
       run: |
@@ -75,18 +77,22 @@ jobs:
         bash macos/build-macos-app.sh "${VERSION#v}" artifacts
         ditto -c -k --keepParent "artifacts/InstaCropper.app" "artifacts/InstaCropper-macos-${VERSION}.zip"
 
+    # Master / dev build: keep the .app as a downloadable workflow artifact only.
+    - name: Upload macOS app artifact
+      if: steps.version.outputs.is_release == 'false'
+      uses: actions/upload-artifact@v4
+      with:
+        name: InstaCropper-macos-${{ steps.version.outputs.version }}
+        path: artifacts/InstaCropper-macos-*.zip
+        if-no-files-found: error
+
+    # Tag build: publish a real GitHub release for the manually created tag.
     - name: Create release
+      if: steps.version.outputs.is_release == 'true'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        PRERELEASE_FLAG=""
-        if [[ "${{ steps.version.outputs.prerelease }}" == "true" ]]; then
-          PRERELEASE_FLAG="--prerelease"
-        fi
-        # Creates the tag at this commit if it does not already exist.
         gh release create "$VERSION" artifacts/InstaCropper-macos-*.zip \
           --title "InstaCropper $VERSION" \
-          --target "$GITHUB_SHA" \
-          --generate-notes \
-          $PRERELEASE_FLAG
+          --generate-notes

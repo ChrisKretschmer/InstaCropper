@@ -75,14 +75,14 @@ Apple Silicon and Intel Macs.
 
 ## Releases
 
-Releases are produced automatically by CI (see
+Builds are produced by CI (see
 [`.github/workflows/dotnet.yml`](.github/workflows/dotnet.yml)):
 
-* **Push to `master`** publishes a prerelease versioned from the last real tag
-  with the patch bumped and a `-dev.<commit>` suffix.
-* **Pushing a `v*` tag** publishes a full release for that version.
-
-Each release attaches the zipped **InstaCropper.app** for macOS.
+* **Push to `master`** builds the macOS app and uploads it as a downloadable
+  **workflow artifact**, named from the last real tag with the patch bumped and
+  a `-dev.<commit>` suffix. No tag or release is created.
+* **Pushing a `v*` tag** (created manually, only for real releases) publishes a
+  GitHub release for that version with the zipped **InstaCropper.app** attached.
 
 ## License
 
