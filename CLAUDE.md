@@ -22,10 +22,11 @@ It can be driven two ways:
 - **Language / runtime:** C# on .NET 8 (`net8.0`), `OutputType` Exe.
 - **Project style:** Top-level statements (no explicit `Main` in `Program.cs`),
   implicit usings enabled, nullable reference types enabled.
-- **Image library:** [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp) `3.1.8`.
+- **Image library:** [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp) `3.1.11`.
   Stay on the **3.1.x** line — it is the last Apache-2.0 licensed release; 4.x
-  requires a paid Six Labors license and fails the build without one. The
-  `NU1902` advisory warning on 3.1.8 is known and non-blocking.
+  requires a paid Six Labors license and fails the build without one. 3.1.11
+  patches the GIF-decoder DoS advisory `GHSA-rxmq-m78w-7wmc` (the build is now
+  warning-free; do not regress below 3.1.11).
 - **Tests:** xUnit (`InstaCropper.Tests`).
 - **IDE:** Visual Studio 2022 solution (`InstaCropper.sln`).
 
@@ -135,6 +136,9 @@ directory.
     outputs (`version`, `is_release`) for the jobs below.
     - **Master push:** `v<MAJOR>.<MINOR>.<PATCH+1>-dev.<sha>` (base = latest
       **real** release tag, `-dev` tags excluded by a regex); `is_release=false`.
+      Both full `vX.Y.Z` and short `vX.Y` tags (e.g. `v0.1`) are accepted as the
+      base — a missing patch is treated as `0`. Prefer creating full semver tags
+      going forward.
     - **Tag push:** the exact tagged version; `is_release=true`.
   - **`package-macos`** (macos-latest): builds the `.app` (needs macOS tooling),
     zips it, uploads it as a workflow artifact.
@@ -146,8 +150,10 @@ directory.
     and publishes a GitHub release with all zips via `gh`. Holds the
     `contents: write` permission. **Tags are created manually, only for real
     releases** — dev builds never create a tag or release.
-- Keep the build warning-free (the ImageSharp `NU1902` advisory aside) and tests
-  green before pushing.
+- The CI actions are pinned to their Node 24 majors (checkout@v5, setup-dotnet@v5,
+  upload-artifact@v6, download-artifact@v7) to avoid the Node 20 deprecation
+  warning.
+- Keep the build warning-free and tests green before pushing.
 
 ## Conventions & guidance for changes
 
