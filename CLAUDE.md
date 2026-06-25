@@ -146,9 +146,10 @@ directory.
     the image's Xcode/toolchain. Fall back to `macos-15` if a fresh image
     regresses.
   - **`package-desktop`** (ubuntu): cross-publishes self-contained single-file
-    **win-x64** and **linux-x64** binaries on Linux, zips each, uploads them as a
-    workflow artifact. (Each platform builds on its natural runner; only macOS
-    uses the macOS runner.)
+    **win-x64** and **linux-x64** binaries on Linux, zips each, and uploads them
+    as **separate per-platform artifacts** (so each can be downloaded on its
+    own). (Each platform builds on its natural runner; only macOS uses the macOS
+    runner.)
   - **`release`** (ubuntu, `is_release` only): downloads every platform artifact
     and publishes a GitHub release with all zips via `gh`. Holds the
     `contents: write` permission. **Tags are created manually, only for real
