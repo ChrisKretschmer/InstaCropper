@@ -128,22 +128,26 @@ directory.
 ## CI & releases (`.github/workflows/dotnet.yml`)
 
 - Triggers: push to `master`, push of a `v*` tag, and PRs targeting `master`.
-- **`build` job** (ubuntu): `restore` → `build -c Release` → `test`. Runs on
-  every push/PR and gates packaging.
-- **`package` job** (macos-latest, only on master pushes or `v*` tags):
-  computes a version, builds the macOS `.app` plus self-contained single-file
-  binaries for **win-x64** and **linux-x64** (cross-published from the macOS
-  runner), and zips each.
-  - **Master push:** the zips are uploaded as **workflow artifacts** named
-    `v<MAJOR>.<MINOR>.<PATCH+1>-dev.<sha>` (base = latest **real** release tag,
-    `-dev` tags excluded by a regex). **No git tag or release is created** for
-    dev builds — the version string is for artifact naming only.
-  - **Tag push:** a full GitHub release is published for the exact tagged
-    version with all platform zips attached. **Tags are created manually, only
-    for real releases.**
-- Needs `permissions: contents: write` (for the release on tag pushes). Keep the
-  build warning-free (the ImageSharp `NU1902` advisory aside) and tests green
-  before pushing.
+- Jobs (the packaging/release jobs only run on master pushes or `v*` tags):
+  - **`build`** (ubuntu): `restore` → `build -c Release` → `test`. Runs on every
+    push/PR and gates everything else.
+  - **`version`** (ubuntu): computes the version once and exposes it as job
+    outputs (`version`, `is_release`) for the jobs below.
+    - **Master push:** `v<MAJOR>.<MINOR>.<PATCH+1>-dev.<sha>` (base = latest
+      **real** release tag, `-dev` tags excluded by a regex); `is_release=false`.
+    - **Tag push:** the exact tagged version; `is_release=true`.
+  - **`package-macos`** (macos-latest): builds the `.app` (needs macOS tooling),
+    zips it, uploads it as a workflow artifact.
+  - **`package-desktop`** (ubuntu): cross-publishes self-contained single-file
+    **win-x64** and **linux-x64** binaries on Linux, zips each, uploads them as a
+    workflow artifact. (Each platform builds on its natural runner; only macOS
+    uses the macOS runner.)
+  - **`release`** (ubuntu, `is_release` only): downloads every platform artifact
+    and publishes a GitHub release with all zips via `gh`. Holds the
+    `contents: write` permission. **Tags are created manually, only for real
+    releases** — dev builds never create a tag or release.
+- Keep the build warning-free (the ImageSharp `NU1902` advisory aside) and tests
+  green before pushing.
 
 ## Conventions & guidance for changes
 
