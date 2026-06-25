@@ -72,9 +72,11 @@ jobs:
         echo "Resolved version: $VERSION (is_release=$IS_RELEASE)"
 
   # macOS .app must be built on macOS (osacompile / PlistBuddy / ditto).
+  # Pinned to macos-15 for reproducibility: the macos-latest label is migrating
+  # to macOS 26 (Jun–Jul 2026). Bump to macos-26 once it's proven stable.
   package-macos:
     needs: version
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v5
     - name: Setup .NET
