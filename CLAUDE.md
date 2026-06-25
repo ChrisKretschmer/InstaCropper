@@ -140,9 +140,11 @@ directory.
       base — a missing patch is treated as `0`. Prefer creating full semver tags
       going forward.
     - **Tag push:** the exact tagged version; `is_release=true`.
-  - **`package-macos`** (macos-15, pinned): builds the `.app` (needs macOS
-    tooling), zips it, uploads it as a workflow artifact. Pinned to avoid the
-    `macos-latest` → macOS 26 migration; bump to `macos-26` once it's stable.
+  - **`package-macos`** (macos-26, pinned): builds the `.app` (needs macOS
+    tooling), zips it, uploads it as a workflow artifact. Pinned to an explicit
+    version (not `macos-latest`) for reproducibility; the build is agnostic to
+    the image's Xcode/toolchain. Fall back to `macos-15` if a fresh image
+    regresses.
   - **`package-desktop`** (ubuntu): cross-publishes self-contained single-file
     **win-x64** and **linux-x64** binaries on Linux, zips each, uploads them as a
     workflow artifact. (Each platform builds on its natural runner; only macOS
