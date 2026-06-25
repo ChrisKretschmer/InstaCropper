@@ -43,7 +43,7 @@ done
 echo "==> Patching Info.plist"
 PLIST="${APP}/Contents/Info.plist"
 plist_set() { /usr/libexec/PlistBuddy -c "Set ${1} ${2}" "$PLIST" 2>/dev/null; }
-plist_add() { /usr/libexec/PlistBuddy -c "Add ${1} ${2} ${3}" "$PLIST" 2>/dev/null; }
+plist_add() { /usr/libexec/PlistBuddy -c "Add ${1} ${2} ${3:-}" "$PLIST" 2>/dev/null; }
 
 plist_set ":CFBundleName" "$APP_NAME" || true
 plist_add ":CFBundleShortVersionString" string "$VERSION" || plist_set ":CFBundleShortVersionString" "$VERSION" || true
