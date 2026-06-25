@@ -1,11 +1,11 @@
-# Builds and tests InstaCropper; packages the macOS app for real builds.
+# Builds and tests InstaCropper; packages macOS, Windows and Linux for real builds.
 #
 #   * Every push/PR  -> restore, build, test.
-#   * Push to master -> build the macOS .app and upload it as a workflow
-#                       *artifact* named with a "-dev.<sha>" version. No tag,
-#                       no GitHub release is created.
-#   * Push of a v* tag (created manually for real releases) -> build the macOS
-#                       .app and publish a GitHub release for that version.
+#   * Push to master -> build the macOS .app + Windows/Linux binaries and upload
+#                       them as workflow *artifacts* named with a "-dev.<sha>"
+#                       version. No tag, no GitHub release is created.
+#   * Push of a v* tag (created manually for real releases) -> build all
+#                       platforms and publish a GitHub release for that version.
 # See https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
 name: .NET
 
@@ -77,22 +77,37 @@ jobs:
         bash macos/build-macos-app.sh "${VERSION#v}" artifacts
         ditto -c -k --keepParent "artifacts/InstaCropper.app" "artifacts/InstaCropper-macos-${VERSION}.zip"
 
-    # Master / dev build: keep the .app as a downloadable workflow artifact only.
-    - name: Upload macOS app artifact
+    - name: Build Windows and Linux binaries
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        NUMERIC="${VERSION#v}"; NUMERIC="${NUMERIC%%-*}"
+        for RID in win-x64 linux-x64; do
+          dotnet publish InstaCropper/InstaCropper.csproj \
+            -c Release -r "$RID" --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:Version="$NUMERIC" \
+            -p:InformationalVersion="${VERSION#v}" \
+            -o "artifacts/$RID"
+          rm -f "artifacts/$RID"/*.pdb
+          (cd "artifacts/$RID" && zip -r "../InstaCropper-$RID-${VERSION}.zip" .)
+        done
+
+    # Master / dev build: keep all platform zips as downloadable workflow artifacts only.
+    - name: Upload build artifacts
       if: steps.version.outputs.is_release == 'false'
       uses: actions/upload-artifact@v4
       with:
-        name: InstaCropper-macos-${{ steps.version.outputs.version }}
-        path: artifacts/InstaCropper-macos-*.zip
+        name: InstaCropper-${{ steps.version.outputs.version }}
+        path: artifacts/InstaCropper-*.zip
         if-no-files-found: error
 
-    # Tag build: publish a real GitHub release for the manually created tag.
+    # Tag build: publish a real GitHub release (all platforms) for the manually created tag.
     - name: Create release
       if: steps.version.outputs.is_release == 'true'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        gh release create "$VERSION" artifacts/InstaCropper-macos-*.zip \
+        gh release create "$VERSION" artifacts/InstaCropper-*.zip \
           --title "InstaCropper $VERSION" \
           --generate-notes

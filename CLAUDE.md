@@ -131,13 +131,16 @@ directory.
 - **`build` job** (ubuntu): `restore` → `build -c Release` → `test`. Runs on
   every push/PR and gates packaging.
 - **`package` job** (macos-latest, only on master pushes or `v*` tags):
-  computes a version, builds the macOS `.app`, and zips it.
-  - **Master push:** the zip is uploaded as a **workflow artifact** named
+  computes a version, builds the macOS `.app` plus self-contained single-file
+  binaries for **win-x64** and **linux-x64** (cross-published from the macOS
+  runner), and zips each.
+  - **Master push:** the zips are uploaded as **workflow artifacts** named
     `v<MAJOR>.<MINOR>.<PATCH+1>-dev.<sha>` (base = latest **real** release tag,
     `-dev` tags excluded by a regex). **No git tag or release is created** for
     dev builds — the version string is for artifact naming only.
   - **Tag push:** a full GitHub release is published for the exact tagged
-    version. **Tags are created manually, only for real releases.**
+    version with all platform zips attached. **Tags are created manually, only
+    for real releases.**
 - Needs `permissions: contents: write` (for the release on tag pushes). Keep the
   build warning-free (the ImageSharp `NU1902` advisory aside) and tests green
   before pushing.
